@@ -20,8 +20,8 @@ class CommandInterpreterNode(Node):
         # 物体→动作映射
         self.action_map = {
             'cup': {'linear': 0.3, 'angular': 0.0, 'desc': '直行'},
-            'apple': {'linear': 0.0, 'angular': 0.5, 'desc': '左转'},
-            'banana': {'linear': 0.0, 'angular': -0.5, 'desc': '右转'}
+            'apple': {'linear': 0.0, 'angular': 3.0, 'desc': '左转'},
+            'banana': {'linear': 0.0, 'angular': -3.0, 'desc': '右转'}
         }
         
         self.current_object = None
@@ -51,7 +51,7 @@ class CommandInterpreterNode(Node):
         
     def execute_action(self):
         # 超时停止
-        if (self.get_clock().now() - self.last_detection).nanoseconds / 1e9 > 2.0:
+        if (self.get_clock().now() - self.last_detection).nanoseconds / 1e9 > 5.0:
             if self.current_object:
                 self.current_object = None
                 self.get_logger().info('超时停止', throttle_duration_sec=2.0)
