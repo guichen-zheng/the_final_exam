@@ -65,10 +65,19 @@ def generate_launch_description():
         PythonExpression(["'", LaunchConfiguration('mode'), "' == 'follow'"])),
     )
     
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2_vision',
+        arguments=['-d', '$(find-pkg-share pb_option1_vision)/config/vision.rviz'],
+        output='screen',
+    )
+
     return LaunchDescription([
         mode_arg,
         use_sim_time_arg,
         detector_node,
         command_node,
         follow_node,
+        rviz_node,
     ])

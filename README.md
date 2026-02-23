@@ -91,7 +91,7 @@ colcon build --packages-select pb_option1_vision
 ```
 ros2 run image_tools cam2image --ros-args -p device_id:=0
 ```
-3. 回到原终端(launch中已设置好rviz)
+3. 回到原终端（在rviz中加入topic/vision/annotated_image）
 ```
 source install/setup.bash
 ros2 launch pb_option1_vision vision_and_follow.launch.py

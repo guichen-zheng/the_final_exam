@@ -25,9 +25,9 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'object_detector_node= pb_option1_vision.object_detector:main',
-            'command_interpreter_node = pb_option1_vision.command_interpreter_node:main',
-            'follow_behavior_node= pb_option1_vision.follow_behavior_node:main',
+            'object_detector_node=pb_option1_vision.object_detector:main',
+            'command_interpreter_node=pb_option1_vision.command_interpreter_node:main',
+            'follow_behavior_node=pb_option1_vision.follow_behavior_node:main',
         ],
     },
 )

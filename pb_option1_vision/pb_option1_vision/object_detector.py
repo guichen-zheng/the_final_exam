@@ -45,7 +45,7 @@ class ObjectDetectorNode(Node):
         # 订阅图像
         self.image_sub = self.create_subscription(
             Image,
-            '/camera/image_raw',
+            '/image',
             self.image_callback,
             10
         )
