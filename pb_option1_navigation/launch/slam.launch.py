@@ -11,15 +11,14 @@ from launch_ros.actions import Node
 def generate_launch_description():
     pkg_dir = get_package_share_directory('pb_option1_navigation')
 
-    use_sim_time = LaunchConfiguration('use_sim_time')
+    # NOTE:
+    # To avoid launch creating a temporary /tmp/launch_params_* file, we only pass the yaml file
+    # as parameters. Put `use_sim_time: true/false` directly inside slam_params.yaml if needed.
+
     slam_params = LaunchConfiguration('slam_params')
     autostart = LaunchConfiguration('autostart')
     log_level = LaunchConfiguration('log_level')
     slam_mode = LaunchConfiguration('slam_mode')
-
-    declare_use_sim_time = DeclareLaunchArgument(
-        'use_sim_time', default_value='false',
-        description='Use simulation clock')
 
     declare_slam_params = DeclareLaunchArgument(
         'slam_params',
@@ -44,7 +43,7 @@ def generate_launch_description():
         executable='async_slam_toolbox_node',
         name='slam_toolbox',
         output='screen',
-        parameters=[slam_params, {'use_sim_time': use_sim_time}],
+        parameters=[slam_params],
         arguments=['--ros-args', '--log-level', log_level],
     )
 
@@ -54,17 +53,15 @@ def generate_launch_description():
         executable='sync_slam_toolbox_node',
         name='slam_toolbox',
         output='screen',
-        parameters=[slam_params, {'use_sim_time': use_sim_time}],
+        parameters=[slam_params],
         arguments=['--ros-args', '--log-level', log_level],
     )
 
-    # map saver server (handy for demo)
     map_saver = Node(
         package='nav2_map_server',
         executable='map_saver_server',
         name='map_saver_server',
         output='screen',
-        parameters=[{'use_sim_time': use_sim_time}],
         arguments=['--ros-args', '--log-level', log_level],
     )
 
@@ -74,7 +71,6 @@ def generate_launch_description():
         name='lifecycle_manager_slam',
         output='screen',
         parameters=[
-            {'use_sim_time': use_sim_time},
             {'autostart': autostart},
             {'node_names': ['map_saver_server']},
         ],
@@ -82,7 +78,6 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        declare_use_sim_time,
         declare_slam_params,
         declare_autostart,
         declare_log_level,
