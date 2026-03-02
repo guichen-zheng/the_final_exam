@@ -106,16 +106,29 @@ def generate_launch_description():
     #     output='screen'
     # )
 
-    # Bridge for cmd_vel
+    # Bridge for cmd_vel (ROS /cmd_vel to Gazebo /model/simulation_robot/cmd_vel, ROS to GZ direction)
+    image_bridge = Node(
+    package='ros_gz_image',
+    executable='image_bridge',
+    arguments=['/image'],  # 你的 webcam 话题
+    output='screen',
+    parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}]
+    )
+    
     cmd_vel_bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
-        arguments=[
-            '/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist',
-            '--ros-args', '--log-level', 'info'
-        ],
+        arguments=['--ros-args', '--log-level', 'info'],
         output='screen',
-        parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}]
+        parameters=[
+            {"bridge_names": ["cmd_vel_bridge"]},
+            {"bridges.cmd_vel_bridge.ros_topic_name": "/cmd_vel"},
+            {"bridges.cmd_vel_bridge.gz_topic_name": "/model/simulation_robot/cmd_vel"},  # 匹配默认插件订阅
+            {"bridges.cmd_vel_bridge.ros_type_name": "geometry_msgs/msg/Twist"},
+            {"bridges.cmd_vel_bridge.gz_type_name": "gz.msgs.Twist"},  # 用 gz.msgs
+            {"bridges.cmd_vel_bridge.direction": "ROS_TO_GZ"},
+            {'use_sim_time': LaunchConfiguration('use_sim_time')}
+        ]
     )
 
     return LaunchDescription([
@@ -128,5 +141,6 @@ def generate_launch_description():
         command_interpreter,
         follow_behavior,
         cmd_vel_bridge,
+        image_bridge,
         # vision_rviz,
     ])
