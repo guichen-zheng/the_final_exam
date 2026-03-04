@@ -1,18 +1,20 @@
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
-from launch.substitutions import PathJoinSubstitution, LaunchConfiguration
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.substitutions import PathJoinSubstitution, LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
 from launch.conditions import IfCondition
-from launch.substitutions import PythonExpression
+from nav2_common.launch import ReplaceString   # 官方替换 <robot_name> 用
+from sdformat_tools.urdf_generator import UrdfGenerator
+from xmacro.xmacro4sdf import XMLMacro4sdf
 import os
 
 def generate_launch_description():
-    pkg_description = get_package_share_directory('pb_option1_description')
-    pkg_sim = get_package_share_directory('pb_option1_sim')
+    pkg_description = get_package_share_directory('pb2025_robot_description')
     pkg_vision = get_package_share_directory('pb_option1_vision')
+    pkg_simulator = get_package_share_directory('rmu_gazebo_simulator')
 
-    # 新增：模式选择参数
+    # ================== 模式选择（和你原来 100% 一样） ==================
     mode_arg = DeclareLaunchArgument(
         'mode',
         default_value='detect',
@@ -25,41 +27,75 @@ def generate_launch_description():
         description='使用模拟时间'
     )
 
-    # 1. 机器人描述 + RViz
-    description_launch = IncludeLaunchDescription(
+    robot_name = 'simulation_robot'
+
+    # ================== 官方 Gazebo（第一版 B 路线） ==================
+    gazebo = IncludeLaunchDescription(
         PathJoinSubstitution([
-            pkg_description, 'launch', 'robot_description_launch.py'
+            pkg_simulator, 'launch', 'gazebo.launch.py'
         ]),
         launch_arguments={
-            'use_sim_time': LaunchConfiguration('use_sim_time'),
-            'use_rviz': 'true'
+            'world_sdf_path': PathJoinSubstitution([
+                pkg_simulator, 'resource', 'worlds', 'rmul_2024_world.sdf'
+            ]),
         }.items()
     )
 
-    # 2. Gazebo
-    gazebo = IncludeLaunchDescription(
-        PathJoinSubstitution([
-            pkg_sim, 'launch', 'gazebo_with_objects.launch.py'
-        ])
+    # ================== Spawn（官方 create + 你的 xmacro） ==================
+    robot_xmacro_path = os.path.join(
+        pkg_description, 'resource', 'xmacro', 'simulation_robot.sdf.xmacro'
     )
 
-    # 3. Spawn robot
+    xmacro = XMLMacro4sdf()
+    xmacro.set_xml_file(robot_xmacro_path)
+
+    xmacro.generate({"global_initial_color": "red"})  # 或你需要的颜色/参数，空 dict 也行试试
+
+    robot_xml = xmacro.to_string()  # 这就是展开后的 SDF 字符串
+
+    # SDF → URDF（给 robot_state_publisher 用）
+    urdf_generator = UrdfGenerator()
+    urdf_generator.parse_from_sdf_string(robot_xml)
+    robot_urdf_xml = urdf_generator.to_string()
+
+    # spawn 用 SDF 字符串
     spawn_robot = Node(
-        package='gazebo_ros',
-        executable='spawn_entity.py',
+        package='ros_gz_sim',
+        executable='create',
         arguments=[
-            '-topic', 'robot_description',
-            '-entity', 'simulation_robot',  # 注意这里用 simulation_robot，与模型名一致
-            '-x', '0',
-            '-y', '0',
-            '-z', '0.6',  # 建议保持或更高，避免卡地
-            '-Y', '0',
-            '-timeout', '30'
+            '-string', robot_xml,  # ← 用展开后的
+            '-name', robot_name,
+            '-allow_renaming', 'true',
+            '-x', '0', '-y', '0', '-z', '0.1', '-Y', '0',
         ],
         output='screen'
     )
 
-    # 4. 视觉节点
+    # 额外：把 URDF 发布给 robot_state_publisher（如果你原来的 description_launch 没处理）
+    robot_state_publisher = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        namespace=robot_name,
+        parameters=[{'robot_description': robot_urdf_xml, 'use_sim_time': LaunchConfiguration('use_sim_time')}],
+        remappings=[('/tf', 'tf'), ('/tf_static', 'tf_static')],
+        output='screen'
+    )
+
+
+    # ================== 官方底盘控制（B 路线的核心） ==================
+    robot_base = Node(
+        package='rmoss_gz_base',
+        executable='rmua19_robot_base',
+        name='rmua19_robot_base',
+        namespace=robot_name,
+        parameters=[
+            os.path.join(pkg_simulator, 'config', 'base_params.yaml'),
+            {'robot_name': robot_name}
+        ],
+        output='screen'
+    )
+
+    # ================== 你的视觉节点（保持原来结构） ==================
     detector_params = PathJoinSubstitution([pkg_vision, 'config', 'detector_params.yaml'])
     follow_params = PathJoinSubstitution([pkg_vision, 'config', 'follow_params.yaml'])
 
@@ -74,17 +110,16 @@ def generate_launch_description():
         ]
     )
 
-    # 只在 detect 模式启动命令解释节点
     command_interpreter = Node(
         package='pb_option1_vision',
         executable='command_interpreter_node',
         name='command_interpreter_node',
         output='screen',
         parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
+        remappings=[('/cmd_vel', '/simulation_robot/cmd_vel')], 
         condition=IfCondition(PythonExpression(["'", LaunchConfiguration('mode'), "' == 'detect'"]))
     )
 
-    # 只在 follow 模式启动跟随节点
     follow_behavior = Node(
         package='pb_option1_vision',
         executable='follow_behavior_node',
@@ -94,53 +129,54 @@ def generate_launch_description():
             follow_params,
             {'use_sim_time': LaunchConfiguration('use_sim_time')}
         ],
+        remappings=[('/cmd_vel', '/simulation_robot/cmd_vel')],
         condition=IfCondition(PythonExpression(["'", LaunchConfiguration('mode'), "' == 'follow'"]))
     )
 
-    # 可选：视觉专用 RViz（已注释，如果你需要可打开）
-    # vision_rviz = Node(
-    #     package='rviz2',
-    #     executable='rviz2',
-    #     name='rviz2_vision',
-    #     arguments=['-d', PathJoinSubstitution([pkg_vision, 'config', 'vision.rviz'])],
-    #     output='screen'
-    # )
-
-    # Bridge for cmd_vel (ROS /cmd_vel to Gazebo /model/simulation_robot/cmd_vel, ROS to GZ direction)
-    image_bridge = Node(
-    package='ros_gz_image',
-    executable='image_bridge',
-    arguments=['/image'],  # 你的 webcam 话题
-    output='screen',
-    parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}]
-    )
-    
+    # ================== Bridge ==================
     cmd_vel_bridge = Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
-        arguments=['--ros-args', '--log-level', 'info'],
+        arguments=[
+            f'/{robot_name}/cmd_vel@geometry_msgs/msg/Twist@gz.msgs.Twist',   # ← 改成这个
+            '--ros-args', '--log-level', 'info'
+        ],
         output='screen',
-        parameters=[
-            {"bridge_names": ["cmd_vel_bridge"]},
-            {"bridges.cmd_vel_bridge.ros_topic_name": "/cmd_vel"},
-            {"bridges.cmd_vel_bridge.gz_topic_name": "/model/simulation_robot/cmd_vel"},  # 匹配默认插件订阅
-            {"bridges.cmd_vel_bridge.ros_type_name": "geometry_msgs/msg/Twist"},
-            {"bridges.cmd_vel_bridge.gz_type_name": "gz.msgs.Twist"},  # 用 gz.msgs
-            {"bridges.cmd_vel_bridge.direction": "ROS_TO_GZ"},
-            {'use_sim_time': LaunchConfiguration('use_sim_time')}
-        ]
+        parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}]
     )
 
-    return LaunchDescription([
+    image_bridge = Node(
+        package='ros_gz_image',
+        executable='image_bridge',
+        arguments=['/image'],
+        output='screen',
+        parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}]
+    )
+
+    # ================== 描述 + RViz（你原来的） ==================
+    description_launch = IncludeLaunchDescription(
+        PathJoinSubstitution([
+            pkg_description, 'launch', 'robot_description_launch.py'
+        ]),
+        launch_arguments={
+            'use_sim_time': LaunchConfiguration('use_sim_time'),
+            'use_rviz': 'true'
+        }.items()
+    )
+
+    ld = LaunchDescription([
         mode_arg,
         use_sim_time_arg,
         description_launch,
         gazebo,
         spawn_robot,
+        robot_base,               # 官方底盘
         object_detector,
         command_interpreter,
         follow_behavior,
         cmd_vel_bridge,
         image_bridge,
-        # vision_rviz,
+        robot_state_publisher,
     ])
+
+    return ld
