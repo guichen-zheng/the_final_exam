@@ -36,7 +36,7 @@ def generate_launch_description():
         ]),
         launch_arguments={
             'world_sdf_path': PathJoinSubstitution([
-                pkg_simulator, 'resource', 'worlds', 'rmul_2024_world.sdf'
+                pkg_simulator, 'resource', 'worlds', 'empty_world.sdf'
             ]),
         }.items()
     )
@@ -163,7 +163,7 @@ def generate_launch_description():
             'use_rviz': 'true'
         }.items()
     )
-
+    
     ld = LaunchDescription([
         mode_arg,
         use_sim_time_arg,

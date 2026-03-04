@@ -28,3 +28,7 @@ repositories:
     type: git
     url: https://github.com/LihanChen2004/joint_state_publisher.git
     version: feat-offset-timestamp
+  rmu_gazebo_simulator:
+    type: git
+    url: https://github.com/SMBU-PolarBear-Robotics-Team/rmu_gazebo_simulator.git
+    
