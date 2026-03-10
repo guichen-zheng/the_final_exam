@@ -1,4 +1,12 @@
-target_distance: 1.0  # 米
-linear_gain: 0.25
-angular_gain: 0.003
-image_width: 640
+/**:
+  ros__parameters:
+    # 运动参数
+    linear_speed: 0.3      # m/s
+    angular_speed: 0.5     # rad/s
+    
+    # 图像参数
+    image_width: 640
+    image_height: 480
+    
+    # 控制参数
+    center_tolerance: 50   # 中心对齐容差(像素)

@@ -1,27 +1,9 @@
-hsv_range:
-  lower:
-    h: 0
-    s: 50
-    v: 60
-  upper:
-    h: 50
-    s: 255
-    v: 255
-
-morphology:
-  kernel_size: 5
-
-detection:
-  min_area: 600.0
-
-apple:
-  min_circularity: 0.60
-  aspect_ratio_min: 0.75
-  aspect_ratio_max: 1.40
-  min_area: 800.0
-
-banana:
-  max_circularity: 0.45
-  aspect_ratio_min: 1.8
-  aspect_ratio_max: 6.5
-  min_area: 600.0
+/**:
+  ros__parameters:
+    # YOLO模型配置
+    model_path: "yolov8n.pt"
+    confidence_threshold: 0.5
+    device: "cpu"  # "cpu" 或 "cuda"
+    
+    # 目标类别 (COCO dataset)
+    # cup: 41, apple: 47, banana: 46

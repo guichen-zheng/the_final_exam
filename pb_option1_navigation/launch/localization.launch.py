@@ -10,13 +10,16 @@ from launch_ros.actions import Node
 def generate_launch_description():
     pkg_dir = get_package_share_directory('pb_option1_navigation')
 
-    use_sim_time = LaunchConfiguration('use_sim_time')
+    # NOTE:
+    # To avoid launch creating a temporary /tmp/launch_params_* file, we do not pass dict-style
+    # overrides (like use_sim_time) here. Put `use_sim_time: true/false` inside amcl_params.yaml
+    # and/or other yaml configs if needed.
+
     map_yaml = LaunchConfiguration('map')
     amcl_params = LaunchConfiguration('amcl_params')
     autostart = LaunchConfiguration('autostart')
     log_level = LaunchConfiguration('log_level')
 
-    declare_use_sim_time = DeclareLaunchArgument('use_sim_time', default_value='false')
     declare_map = DeclareLaunchArgument(
         'map',
         default_value=os.path.join(pkg_dir, 'maps', 'map.yaml'),
@@ -33,7 +36,7 @@ def generate_launch_description():
         executable='map_server',
         name='map_server',
         output='screen',
-        parameters=[{'use_sim_time': use_sim_time, 'yaml_filename': map_yaml}],
+        parameters=[{'yaml_filename': map_yaml}],
         arguments=['--ros-args', '--log-level', log_level],
     )
 
@@ -42,7 +45,7 @@ def generate_launch_description():
         executable='amcl',
         name='amcl',
         output='screen',
-        parameters=[amcl_params, {'use_sim_time': use_sim_time}],
+        parameters=[amcl_params],
         arguments=['--ros-args', '--log-level', log_level],
     )
 
@@ -52,7 +55,6 @@ def generate_launch_description():
         name='lifecycle_manager_localization',
         output='screen',
         parameters=[
-            {'use_sim_time': use_sim_time},
             {'autostart': autostart},
             {'node_names': ['map_server', 'amcl']},
         ],
@@ -60,7 +62,6 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
-        declare_use_sim_time,
         declare_map,
         declare_amcl_params,
         declare_autostart,

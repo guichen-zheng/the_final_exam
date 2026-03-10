@@ -7,9 +7,9 @@ pb_option1_nav_vision/
 │   ├── launch/
 │   │   ├── sim.launch.py             # 仿真启动
 │   │   ├── real.launch.py            # 实车启动
-│   │   └── joystick.launch.py        # 可选：手柄遥控调试用
+│   │   └── joystick.launch.py        
 │
-├── pb_option1_description/           # URDF / xacro 机器人模型（基本保持原样）
+├── pb2025_robot_description/           #xmacro 机器人模型（基本保持原样）
 │
 ├── pb_option1_navigation/            # 核心导航部分（从 pb2025_sentry_nav 精简而来）
 │   ├── config/
@@ -26,10 +26,10 @@ pb_option1_nav_vision/
 ├── include/                        # 头文件（可选，如果有自定义类）
 │   └── pb_option1_vision/
 │       └── object_detector.hpp     # 示例头文件
-├── src/
-│   ├── object_detector_node.cpp    # 主节点：检测物体
-│   ├── follow_behavior_node.cpp    # 跟随逻辑
-│   └── command_interpreter_node.cpp # 物体 → 动作映射
+├── pb_option1_vision/
+│   ├── object_detector_node.py    # 主节点：检测物体
+│   ├── follow_behavior_node.py    # 跟随逻辑
+│   └── command_interpreter_node.py # 物体 → 动作映射
 ├── config/
 │   ├── detector_params.yaml        # HSV 阈值等（用 YAML-cpp 加载）
 │   └── follow_params.yaml          # 跟随参数
@@ -46,52 +46,36 @@ pb_option1_nav_vision/
 └── README.md
 ```
 目前结构如此，后续可作出相应更改
-### 一、pb_option1_bringup
-存放launch启动文件
-#### 1.sim.launch.py
-用于启动仿真（如需小车，请先执行下面pb_option1_description中的内容）
-以下是启动视觉仿真流程
-1. 编译
-```
-colcon build --symlink-install
-```
-2. 启动
-```
-source install/setup.bash
-ros2 launch pb_option1_bringup sim.launch.py
-```
-3. 在rviz中添加/image下的image，和makerarray
-识别到的物品会在终端中给出（problem：在未放物品时持续检测到香蕉？）
-### 二、pb_option1_description
-由于次模型利用了特殊的xmacro文件，需要特定库将其解释，而且此解释库不可保存在git,所以需要在每次运行有关使用小车模型的调试时，请先执行以下步骤
-1. 下载所用依赖
-```
+### 一、准备工作
+#### 1. 依赖准备（在workspace下）
+```sh
+vcs import src < src/dependencies.repos
 sudo apt install git-lfs
 pip install vcstool2
-```
-2. 将相关库导入
-```
-cd src/pb_option1_description
-vcs import --recursive < dependencies.repos
-mv joint_state_publisher rmoss_gz_resources sdformat_tools ..
-```
-3. 下载xmacro插件
-```
 pip install xmacro
 ```
-### 三、 pb_option1_navigation
-### 四、 pb_option1_vision
-#### 调试流程：
-1. 编译
+#### 2.编译
+```sh 
+colcon build --symlink-install
+``` 
+##### 如崩溃用这个
+```sh
+colcon build --symlink-install --parallel-workers 3
 ```
-colcon build --packages-select pb_option1_vision
+### 二、启动(vision功能)
+#### 启动识别
+```sh
+ros2 launch pb_option1_bringup sim.launch.py mode:=detect
 ```
-2. 先开启另一终端，启动相机节点(ros2自带实例)
+#### 启动跟随
+```sh
+ros2 launch pb_option1_bringup sim.launch.py mode:=follow
 ```
+##### 在另一终端中启动相机,如想看到识别结果（在rviz中加入topic/vision/annotated_image）
+```sh
 ros2 run image_tools cam2image --ros-args -p device_id:=0
 ```
-3. 回到原终端(launch中已设置好rviz)
-```
-source install/setup.bash
-ros2 launch pb_option1_vision vision_and_follow.launch.py
+##### 可以启动控制小车
+```sh
+ros2 run rmoss_gz_base test_chassis_cmd.py --ros-args -r __ns:=/red_standard_robot1/robot_base -p v:=0.3 -p w:=0.3
 ```
