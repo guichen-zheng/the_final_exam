@@ -1,13 +1,18 @@
 # Minimal-but-usable Nav2 params for Option1
 # NOTE: This file is intentionally smaller than pb2025_sentry_nav.
-# Tune values (especially controller + costmaps) after you have a working TF(/map,/odom,/base_link) and /scan.
+# Tune values (especially controller + costmaps) after you have a working TF(/map,/odom,/base_footprint) and /scan.
 
 amcl:
   ros__parameters:
     use_sim_time: false
     global_frame_id: map
     odom_frame_id: odom
-    base_frame_id: base_link
+    base_frame_id: base_footprint
+    set_initial_pose: true
+    initial_pose.x: 0.0
+    initial_pose.y: 0.0
+    initial_pose.z: 0.0
+    initial_pose.yaw: 0.0
     scan_topic: /scan
 
 map_server:
@@ -99,7 +104,7 @@ bt_navigator:
   ros__parameters:
     use_sim_time: false
     global_frame: map
-    robot_base_frame: base_link
+    robot_base_frame: base_footprint
     odom_topic: /odom
     bt_loop_duration: 10
     default_server_timeout: 20
@@ -128,10 +133,10 @@ local_costmap:
     ros__parameters:
       use_sim_time: false
       global_frame: odom
-      robot_base_frame: base_link
+      robot_base_frame: base_footprint
       rolling_window: true
-      width: 3.0
-      height: 3.0
+      width: 3
+      height: 3
       resolution: 0.05
       robot_radius: 0.25
       update_frequency: 10.0
@@ -156,7 +161,7 @@ global_costmap:
     ros__parameters:
       use_sim_time: false
       global_frame: map
-      robot_base_frame: base_link
+      robot_base_frame: base_footprint
       track_unknown_space: true
       resolution: 0.05
       robot_radius: 0.25
@@ -184,4 +189,3 @@ global_costmap:
 robot_state_publisher:
   ros__parameters:
     use_sim_time: false
-

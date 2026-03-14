@@ -49,19 +49,65 @@ pb_option1_nav_vision/
 ### 一、pb_option1_bringup
 存放launch启动文件
 #### 1.sim.launch.py
-用于启动仿真（如需小车，请先执行下面pb_option1_description中的内容）
-以下是启动视觉仿真流程
+用于启动仿真总入口（如需小车，请先执行下面 `pb_option1_description` 中的内容）。
+
+当前支持三种模式：
+- `mode:=base`：仅启动 Gazebo Classic、机器人模型和基础 TF。
+- `mode:=slam`：在 `base` 基础上启动 SLAM。
+- `mode:=nav`：在 `base` 基础上启动地图定位和 Nav2。
+
+以下是当前推荐的仿真启动流程。
 1. 编译
 ```
 colcon build --symlink-install
 ```
 2. 启动
+
+如果你使用 `zsh`：
+```
+source install/setup.zsh
+```
+
+如果你使用 `bash`：
 ```
 source install/setup.bash
-ros2 launch pb_option1_bringup sim.launch.py
 ```
-3. 在rviz中添加/image下的image，和makerarray
+
+基础仿真：
+```
+ros2 launch pb_option1_bringup sim.launch.py mode:=base
+```
+
+SLAM 仿真：
+```
+ros2 launch pb_option1_bringup sim.launch.py mode:=slam
+```
+
+导航仿真：
+```
+ros2 launch pb_option1_bringup sim.launch.py mode:=nav
+```
+3. 如需视觉调试，可在 RViz 中添加 `/image` 和 MarkerArray
 识别到的物品会在终端中给出（problem：在未放物品时持续检测到香蕉？）
+
+#### 2. 仿真导航已知要求
+当前仿真链路已经按 Gazebo Classic 调通，已确认：
+- 底盘通过 Classic 兼容驱动发布 `/odom`，并广播 `odom -> base_footprint`。
+- `rplidar_a2` 已通过 Classic 兼容激光插件发布 `/scan`。
+- `sim.launch.py` 会在机器人 spawn 后等待关键仿真消息就绪，再继续启动 `slam` / `localization` / `nav2`。
+
+当前导航默认基于以下约定：
+- 仿真器使用 Gazebo Classic，不是 Ignition / GZ Sim。
+- 导航相关 base frame 使用 `base_footprint`，不是 `base_link`。
+- `mode:=nav` 下会自动给 AMCL 设置初始位姿 `(0, 0, 0)`，适配当前默认地图和仿真出生点。
+
+如果在新环境里再次排查导航，请优先检查以下话题和 TF：
+```
+ros2 topic echo /odom --once
+ros2 topic echo /scan --once
+ros2 run tf2_ros tf2_echo odom base_footprint
+ros2 run tf2_ros tf2_echo map base_footprint
+```
 ### 二、pb_option1_description
 由于次模型利用了特殊的xmacro文件，需要特定库将其解释，而且此解释库不可保存在git,所以需要在每次运行有关使用小车模型的调试时，请先执行以下步骤
 1. 下载所用依赖
@@ -80,6 +126,10 @@ mv joint_state_publisher rmoss_gz_resources sdformat_tools ..
 pip install xmacro
 ```
 ### 三、 pb_option1_navigation
+当前导航参数已适配 Humble + Gazebo Classic 仿真，重点包括：
+- `local_costmap` 的 `width`、`height` 使用整数类型。
+- 已补齐 `nav2_dwb_controller`、`nav2_navfn_planner` 依赖。
+- AMCL / Nav2 的底盘 frame 已统一为 `base_footprint`。
 ### 四、 pb_option1_vision
 #### 调试流程：
 1. 编译

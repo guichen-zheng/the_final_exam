@@ -20,8 +20,7 @@
                 <pose>0 0 0.02 0 0 0</pose>
                 <xmacro_block name="geometry_cylinder" r="0.04" l="0.04"/>
             </collision>
-            <sensor name="${prefix}rplidar_a2" type="gpu_lidar">
-                <ignition_frame_id>${prefix}rplidar_a2</ignition_frame_id>
+            <sensor name="${prefix}rplidar_a2" type="ray">
                 <pose>0 0 0.03 0 0 0</pose>
                 <always_on>true</always_on>
                 <visualize>${visualize}</visualize>
@@ -45,6 +44,14 @@
                     <mean>0.0</mean>
                     <stddev>0.01</stddev>
                 </noise>
+                <plugin name="${prefix}rplidar_a2_scan" filename="libgazebo_ros_ray_sensor.so">
+                    <ros>
+                        <namespace>/</namespace>
+                        <remapping>~/out:=scan</remapping>
+                    </ros>
+                    <output_type>sensor_msgs/LaserScan</output_type>
+                    <frame_name>${prefix}rplidar_a2</frame_name>
+                </plugin>
             </sensor>
         </link>
     </xmacro_define_block>

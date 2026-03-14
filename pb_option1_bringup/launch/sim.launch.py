@@ -1,46 +1,143 @@
-from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
-from launch.substitutions import PathJoinSubstitution
-from launch_ros.actions import Node
-from ament_index_python.packages import get_package_share_directory
 import os
+import tempfile
+import time
+
+from ament_index_python.packages import get_package_share_directory
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction, RegisterEventHandler
+from launch.conditions import IfCondition
+from launch.event_handlers import OnProcessExit
+from launch.logging import get_logger
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration, PythonExpression
+from launch_ros.actions import Node
+import rclpy
+from nav_msgs.msg import Odometry
+from sensor_msgs.msg import LaserScan
+from xmacro.xmacro4sdf import XMLMacro4sdf
+
 
 def generate_launch_description():
     pkg_description = get_package_share_directory('pb_option1_description')
+    pkg_navigation = get_package_share_directory('pb_option1_navigation')
     pkg_sim = get_package_share_directory('pb_option1_sim')
-    pkg_vision = get_package_share_directory('pb_option1_vision')
 
-    # 1. 调用 description 包的 launch（处理 xacro + robot_state_publisher）
+    use_sim_time = LaunchConfiguration('use_sim_time')
+    mode = LaunchConfiguration('mode')
+    robot_name = LaunchConfiguration('robot_name')
+    use_rviz = LaunchConfiguration('use_rviz')
+    use_vision = LaunchConfiguration('use_vision')
+    map_yaml = LaunchConfiguration('map')
+    nav2_params = LaunchConfiguration('nav2_params')
+    amcl_params = LaunchConfiguration('amcl_params')
+    slam_params = LaunchConfiguration('slam_params')
+    cmd_vel_topic = LaunchConfiguration('cmd_vel_topic')
+
+    declare_use_sim_time = DeclareLaunchArgument(
+        'use_sim_time',
+        default_value='true',
+        description='Use simulation clock for all nodes.',
+    )
+    declare_mode = DeclareLaunchArgument(
+        'mode',
+        default_value='slam',
+        description="Simulation mode: 'slam', 'nav', or 'base'.",
+    )
+    declare_robot_name = DeclareLaunchArgument(
+        'robot_name',
+        default_value='simulation_robot',
+        description='Robot xmacro name used for both TF publishing and Gazebo spawn.',
+    )
+    declare_use_rviz = DeclareLaunchArgument(
+        'use_rviz',
+        default_value='true',
+        description='Whether to start RViz from the description launch.',
+    )
+    declare_use_vision = DeclareLaunchArgument(
+        'use_vision',
+        default_value='false',
+        description='Whether to start usb_cam and vision follow nodes.',
+    )
+    declare_map = DeclareLaunchArgument(
+        'map',
+        default_value=os.path.join(pkg_navigation, 'maps', 'map.yaml'),
+        description='Map YAML used when mode:=nav.',
+    )
+    declare_nav2_params = DeclareLaunchArgument(
+        'nav2_params',
+        default_value=os.path.join(pkg_navigation, 'config', 'nav2_params.yaml'),
+        description='Nav2 parameter file used when mode:=nav.',
+    )
+    declare_amcl_params = DeclareLaunchArgument(
+        'amcl_params',
+        default_value=os.path.join(pkg_navigation, 'config', 'amcl_params.yaml'),
+        description='AMCL parameter file used when mode:=nav.',
+    )
+    declare_slam_params = DeclareLaunchArgument(
+        'slam_params',
+        default_value=os.path.join(pkg_navigation, 'config', 'slam_params.yaml'),
+        description='SLAM Toolbox parameter file used when mode:=slam.',
+    )
+    declare_cmd_vel_topic = DeclareLaunchArgument(
+        'cmd_vel_topic',
+        default_value='/cmd_vel',
+        description='Velocity topic output from Nav2.',
+    )
+
     description_launch = IncludeLaunchDescription(
-        PathJoinSubstitution([
-            pkg_description, 'launch', 'robot_description_launch.py'
-        ])
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_description, 'launch', 'robot_description_launch.py')
+        ),
+        launch_arguments={
+            'use_sim_time': use_sim_time,
+            'robot_name': robot_name,
+            'use_rviz': use_rviz,
+        }.items(),
     )
 
-    # 2. 只启动一个 Gazebo（带物体的世界）
     gazebo = IncludeLaunchDescription(
-        PathJoinSubstitution([
-            pkg_sim, 'launch', 'gazebo_with_objects.launch.py'
-        ])
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_sim, 'launch', 'gazebo_with_objects.launch.py')
+        )
     )
 
-    # 3. Spawn 小车（必须保留！因为 description 里没有）
-    spawn_robot = Node(
-        package='gazebo_ros',
-        executable='spawn_entity.py',
-        arguments=[
-            '-topic', 'robot_description',   # 从 robot_description_launch.py 读取
-            '-entity', 'pb_robot',
-            '-x', '0',
-            '-y', '0',
-            '-z', '0.35',                    # 抬高一点防卡地
-            '-Y', '0',
-            '-timeout', '30'                 # 等待 robot_description 发布
-        ],
-        output='screen'
+    slam_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_navigation, 'launch', 'slam.launch.py')
+        ),
+        condition=IfCondition(PythonExpression(["'", mode, "' == 'slam'"])),
+        launch_arguments={
+            'use_sim_time': use_sim_time,
+            'slam_params': slam_params,
+        }.items(),
     )
-    # 4. 真实摄像头 + 视觉节点
+
+    localization_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_navigation, 'launch', 'localization.launch.py')
+        ),
+        condition=IfCondition(PythonExpression(["'", mode, "' == 'nav'"])),
+        launch_arguments={
+            'use_sim_time': use_sim_time,
+            'map': map_yaml,
+            'amcl_params': amcl_params,
+        }.items(),
+    )
+
+    nav2_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(pkg_navigation, 'launch', 'nav2_bringup.launch.py')
+        ),
+        condition=IfCondition(PythonExpression(["'", mode, "' == 'nav'"])),
+        launch_arguments={
+            'use_sim_time': use_sim_time,
+            'params_file': nav2_params,
+            'cmd_vel_topic': cmd_vel_topic,
+        }.items(),
+    )
+
     usb_cam = Node(
+        condition=IfCondition(use_vision),
         package='usb_cam',
         executable='usb_cam_node_exe',
         parameters=[{
@@ -56,23 +153,143 @@ def generate_launch_description():
     )
 
     object_detector = Node(
+        condition=IfCondition(use_vision),
         package='pb_option1_vision',
         executable='object_detector',
         output='screen'
     )
 
     follow_behavior = Node(
+        condition=IfCondition(use_vision),
         package='pb_option1_vision',
         executable='follow_behavior',
         output='screen'
     )
 
+    def wait_for_sim_topics_and_start(context, *args, **kwargs):
+        requested_mode = context.launch_configurations['mode']
+        required_topics = {}
+        if requested_mode == 'slam':
+            required_topics = {'/scan': LaserScan}
+        elif requested_mode == 'nav':
+            required_topics = {
+                '/odom': Odometry,
+                '/scan': LaserScan,
+            }
+
+        if not required_topics:
+            return [slam_launch, localization_launch, nav2_launch, usb_cam, object_detector, follow_behavior]
+
+        logger = get_logger('pb_option1_sim_waiter')
+        initialized_here = False
+        waiter = None
+        subscriptions = []
+        received_topics = {topic_name: False for topic_name in required_topics}
+        timeout_sec = 120.0
+        start_time = time.monotonic()
+        last_reported_missing = None
+
+        try:
+            if not rclpy.ok():
+                rclpy.init(args=None)
+                initialized_here = True
+
+            waiter = rclpy.create_node('pb_option1_sim_waiter')
+
+            for topic_name, topic_type in required_topics.items():
+                subscriptions.append(
+                    waiter.create_subscription(
+                        topic_type,
+                        topic_name,
+                        lambda _msg, topic=topic_name: received_topics.__setitem__(topic, True),
+                        10,
+                    )
+                )
+
+            while time.monotonic() - start_time < timeout_sec:
+                missing = [topic for topic, received in received_topics.items() if not received]
+                if not missing:
+                    logger.info(
+                        f"Received simulation messages on {list(required_topics.keys())}; starting mode '{requested_mode}'."
+                    )
+                    break
+
+                if missing != last_reported_missing:
+                    logger.info(f"Waiting for simulation messages before startup: {missing}")
+                    last_reported_missing = missing
+
+                rclpy.spin_once(waiter, timeout_sec=0.5)
+            else:
+                logger.warning(
+                    f"Timed out after {timeout_sec:.0f}s waiting for messages on {list(required_topics.keys())}; starting anyway."
+                )
+        finally:
+            if waiter is not None:
+                waiter.destroy_node()
+            if initialized_here and rclpy.ok():
+                rclpy.shutdown()
+
+        return [slam_launch, localization_launch, nav2_launch, usb_cam, object_detector, follow_behavior]
+
+    def spawn_and_chain_setup(context, *args, **kwargs):
+        xmacro_file = os.path.join(
+            pkg_description,
+            'resource',
+            'xmacro',
+            f"{context.launch_configurations['robot_name']}.sdf.xmacro",
+        )
+
+        xmacro = XMLMacro4sdf()
+        xmacro.set_xml_file(xmacro_file)
+        xmacro.generate()
+        robot_sdf_xml = xmacro.to_string()
+
+        temp_sdf = tempfile.NamedTemporaryFile(
+            mode='w',
+            prefix='pb_option1_',
+            suffix='.sdf',
+            delete=False,
+        )
+        temp_sdf.write(robot_sdf_xml)
+        temp_sdf.flush()
+        temp_sdf.close()
+
+        spawn_robot = Node(
+            package='gazebo_ros',
+            executable='spawn_entity.py',
+            arguments=[
+                '-file', temp_sdf.name,
+                '-entity', 'pb_robot',
+                '-x', '0',
+                '-y', '0',
+                '-z', '0.35',
+                '-Y', '0',
+                '-timeout', '30',
+            ],
+            output='screen'
+        )
+
+        delayed_start = RegisterEventHandler(
+            OnProcessExit(
+                target_action=spawn_robot,
+                on_exit=[OpaqueFunction(function=wait_for_sim_topics_and_start)],
+            )
+        )
+
+        return [spawn_robot, delayed_start]
+
     return LaunchDescription([
-        DeclareLaunchArgument('use_sim_time', default_value='true'),
+        declare_use_sim_time,
+        declare_mode,
+        declare_robot_name,
+        declare_use_rviz,
+        declare_use_vision,
+        declare_map,
+        declare_nav2_params,
+        declare_amcl_params,
+        declare_slam_params,
+        declare_cmd_vel_topic,
         description_launch,
         gazebo,
-        spawn_robot,          # ← 必须保留
-        usb_cam,
-        object_detector,
-        follow_behavior,
+        OpaqueFunction(function=spawn_and_chain_setup),
     ])

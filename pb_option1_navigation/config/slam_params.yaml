@@ -4,7 +4,7 @@ slam_toolbox:
     # Frames
     map_frame: map
     odom_frame: odom
-    base_frame: base_link
+    base_frame: base_footprint
     # Sensor topic
     scan_topic: /scan
 

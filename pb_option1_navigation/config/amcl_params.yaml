@@ -5,7 +5,12 @@ amcl:
     # Frames
     global_frame_id: map
     odom_frame_id: odom
-    base_frame_id: base_link
+    base_frame_id: base_footprint
+    set_initial_pose: true
+    initial_pose.x: 0.0
+    initial_pose.y: 0.0
+    initial_pose.z: 0.0
+    initial_pose.yaw: 0.0
 
     # Topics
     scan_topic: /scan
