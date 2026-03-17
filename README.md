@@ -56,6 +56,11 @@ pb_option1_nav_vision/
 - `mode:=slam`：在 `base` 基础上启动 SLAM。
 - `mode:=nav`：在 `base` 基础上启动地图定位和 Nav2。
 
+另外新增了一条并行的 GZ Sim 入口：
+- `sim_gz.launch.py`：不覆盖现有 Gazebo Classic，单独用于 GZ Sim 验证。
+- 当前已验证 `mode:=base`、`mode:=nav` 可以启动；GZ 分支会桥接并规范化 `/scan`、`/odom`，并广播 `odom -> base_footprint`。
+- GZ Sim 分支当前使用的是一份更轻量的 GZ 专用模型：保留底盘和 `rplidar_a2`，先不带 `mid360`、工业相机和自定义裁判系统插件。
+
 以下是当前推荐的仿真启动流程。
 1. 编译
 ```
@@ -73,20 +78,31 @@ source install/setup.zsh
 source install/setup.bash
 ```
 
-基础仿真：
+Gazebo Classic 基础仿真：
 ```
 ros2 launch pb_option1_bringup sim.launch.py mode:=base
 ```
 
-SLAM 仿真：
+Gazebo Classic SLAM 仿真：
 ```
 ros2 launch pb_option1_bringup sim.launch.py mode:=slam
 ```
 
-导航仿真：
+Gazebo Classic 导航仿真：
 ```
 ros2 launch pb_option1_bringup sim.launch.py mode:=nav
 ```
+
+GZ Sim 基础仿真：
+```
+ros2 launch pb_option1_bringup sim_gz.launch.py mode:=base
+```
+
+GZ Sim 导航仿真：
+```
+ros2 launch pb_option1_bringup sim_gz.launch.py mode:=nav
+```
+
 3. 如需视觉调试，可在 RViz 中添加 `/image` 和 MarkerArray
 识别到的物品会在终端中给出（problem：在未放物品时持续检测到香蕉？）
 
@@ -108,6 +124,19 @@ ros2 topic echo /scan --once
 ros2 run tf2_ros tf2_echo odom base_footprint
 ros2 run tf2_ros tf2_echo map base_footprint
 ```
+
+#### 3. GZ Sim 分支当前状态
+当前仓库里已经新增了一条与 Classic 并存的 GZ Sim 链路，核心文件包括：
+- `pb_option1_bringup/launch/sim_gz.launch.py`
+- `pb_option1_sim/launch/gz_sim_with_objects.launch.py`
+- `pb_option1_sim/worlds/gz_nav_empty.sdf`
+- `pb_option1_description/resource/xmacro/simulation_robot_gz.sdf.xmacro`
+
+当前这条 GZ Sim 分支的设计目标是“先把基础导航输入链搭起来”，所以做了两件事：
+- 使用 GZ Sim 世界 + `ros_gz_bridge` 单独桥接 `/clock`、`/scan`、`/odom`、`/cmd_vel`
+- 在 ROS 侧增加 frame 规范化节点，把 GZ 原始 frame 统一改成 `odom`、`base_footprint`、`front_rplidar_a2`
+
+建议把它当成一条独立验证链来使用，不要直接替换现有 Classic 入口。
 ### 二、pb_option1_description
 由于次模型利用了特殊的xmacro文件，需要特定库将其解释，而且此解释库不可保存在git,所以需要在每次运行有关使用小车模型的调试时，请先执行以下步骤
 1. 下载所用依赖

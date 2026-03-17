@@ -11,6 +11,8 @@
 
   <!-- 运行时依赖：根据你的 launch 文件实际启动的节点加 -->
   <exec_depend>gazebo_ros</exec_depend>
+  <exec_depend>ros_gz_sim</exec_depend>
+  <exec_depend>ros_gz_bridge</exec_depend>
   <exec_depend>robot_state_publisher</exec_depend>
   <exec_depend>usb_cam</exec_depend>
   <exec_depend>pb_option1_description</exec_depend>

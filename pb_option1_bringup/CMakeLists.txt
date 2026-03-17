@@ -25,10 +25,10 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}/launch
 )
 
-# 如果你以后添加了这些文件夹，再打开对应行
-# install(DIRECTORY config/
-#   DESTINATION share/${PROJECT_NAME}/config
-# )
+install(DIRECTORY
+  config/
+  DESTINATION share/${PROJECT_NAME}/config
+)
 # install(DIRECTORY rviz/
 #   DESTINATION share/${PROJECT_NAME}/rviz
 # )

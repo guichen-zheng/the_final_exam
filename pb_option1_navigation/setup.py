@@ -23,6 +23,8 @@ setup(
     license='Apache-2.0',
     tests_require=['pytest'],
     entry_points={
-        'console_scripts': [],
+        'console_scripts': [
+            'gz_frame_normalizer = pb_option1_navigation.gz_frame_normalizer:main',
+        ],
     },
 )

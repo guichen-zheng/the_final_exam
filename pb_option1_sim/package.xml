@@ -12,6 +12,7 @@
 
   <!-- 运行时依赖（launch 文件里会用到） -->
   <depend>gazebo_ros</depend>
+  <depend>ros_gz_sim</depend>
   <depend>pb_option1_description</depend>   <!-- 用于 spawn 机器人 -->
 
   <!-- 测试依赖（可选） -->

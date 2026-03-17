@@ -16,11 +16,10 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}/launch
 )
 
-# 如果你后面创建了 worlds/ 文件夹，就把下面这行取消注释
-# install(DIRECTORY
-#   worlds/
-#   DESTINATION share/${PROJECT_NAME}/worlds
-# )
+install(DIRECTORY
+  worlds/
+  DESTINATION share/${PROJECT_NAME}/worlds
+)
 
 # 如果还有 models/、config/ 等文件夹，也同样加进来
 

@@ -4,11 +4,11 @@ import time
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction, RegisterEventHandler
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction, RegisterEventHandler, TimerAction
 from launch.conditions import IfCondition
 from launch.event_handlers import OnProcessExit
-from launch.logging import get_logger
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.logging import get_logger
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 import rclpy
@@ -21,6 +21,7 @@ def generate_launch_description():
     pkg_description = get_package_share_directory('pb_option1_description')
     pkg_navigation = get_package_share_directory('pb_option1_navigation')
     pkg_sim = get_package_share_directory('pb_option1_sim')
+    pkg_bringup = get_package_share_directory('pb_option1_bringup')
 
     use_sim_time = LaunchConfiguration('use_sim_time')
     mode = LaunchConfiguration('mode')
@@ -33,6 +34,8 @@ def generate_launch_description():
     amcl_params = LaunchConfiguration('amcl_params')
     slam_params = LaunchConfiguration('slam_params')
     cmd_vel_topic = LaunchConfiguration('cmd_vel_topic')
+    world = LaunchConfiguration('world')
+    world_name = LaunchConfiguration('world_name')
 
     declare_use_sim_time = DeclareLaunchArgument(
         'use_sim_time',
@@ -46,8 +49,8 @@ def generate_launch_description():
     )
     declare_robot_name = DeclareLaunchArgument(
         'robot_name',
-        default_value='simulation_robot',
-        description='Robot xmacro name used for both TF publishing and Gazebo spawn.',
+        default_value='simulation_robot_gz',
+        description='Robot xmacro name used for TF publishing and GZ Sim spawn.',
     )
     declare_use_rviz = DeclareLaunchArgument(
         'use_rviz',
@@ -62,7 +65,17 @@ def generate_launch_description():
     declare_gazebo_gui = DeclareLaunchArgument(
         'gazebo_gui',
         default_value='true',
-        description='Whether to start Gazebo Classic GUI (gzclient).',
+        description='Whether to start the GZ Sim GUI.',
+    )
+    declare_world = DeclareLaunchArgument(
+        'world',
+        default_value=os.path.join(pkg_sim, 'worlds', 'gz_nav_empty.sdf'),
+        description='Absolute path to the GZ Sim world file.',
+    )
+    declare_world_name = DeclareLaunchArgument(
+        'world_name',
+        default_value='pb_empty',
+        description='World name declared inside the GZ Sim world SDF.',
     )
     declare_map = DeclareLaunchArgument(
         'map',
@@ -101,13 +114,49 @@ def generate_launch_description():
         }.items(),
     )
 
-    gazebo = IncludeLaunchDescription(
+    gz_sim = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(pkg_sim, 'launch', 'gazebo_with_objects.launch.py')
+            os.path.join(pkg_sim, 'launch', 'gz_sim_with_objects.launch.py')
         ),
         launch_arguments={
             'gui': gazebo_gui,
+            'world': world,
         }.items(),
+    )
+
+    bridge_config = os.path.join(pkg_bringup, 'config', 'gz_bridges.yaml')
+
+    bridge_node = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        parameters=[{
+            'config_file': bridge_config,
+            'qos_overrides./tf_static.publisher.durability': 'transient_local',
+        }],
+        output='screen',
+    )
+
+    cmd_vel_bridge = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        arguments=['/model/pb_robot/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist'],
+        remappings=[('/model/pb_robot/cmd_vel', cmd_vel_topic)],
+        output='screen',
+    )
+
+    frame_normalizer = Node(
+        package='pb_option1_navigation',
+        executable='gz_frame_normalizer',
+        parameters=[{
+            'input_scan_topic': '/scan_raw',
+            'output_scan_topic': '/scan',
+            'input_odom_topic': '/odom_raw',
+            'output_odom_topic': '/odom',
+            'scan_frame_id': 'front_rplidar_a2',
+            'odom_frame_id': 'odom',
+            'base_frame_id': 'base_footprint',
+        }],
+        output='screen',
     )
 
     slam_launch = IncludeLaunchDescription(
@@ -179,17 +228,17 @@ def generate_launch_description():
         requested_mode = context.launch_configurations['mode']
         required_topics = {}
         if requested_mode == 'slam':
-            required_topics = {'/scan': LaserScan}
+            required_topics = {'/scan_raw': LaserScan}
         elif requested_mode == 'nav':
             required_topics = {
-                '/odom': Odometry,
-                '/scan': LaserScan,
+                '/odom_raw': Odometry,
+                '/scan_raw': LaserScan,
             }
 
         if not required_topics:
             return [slam_launch, localization_launch, nav2_launch, usb_cam, object_detector, follow_behavior]
 
-        logger = get_logger('pb_option1_sim_waiter')
+        logger = get_logger('pb_option1_gz_waiter')
         initialized_here = False
         waiter = None
         subscriptions = []
@@ -200,10 +249,10 @@ def generate_launch_description():
 
         try:
             if not rclpy.ok():
-                rclpy.init(args=None)
+                rclpy.init(args=[])
                 initialized_here = True
 
-            waiter = rclpy.create_node('pb_option1_sim_waiter')
+            waiter = rclpy.create_node('pb_option1_gz_waiter')
 
             for topic_name, topic_type in required_topics.items():
                 subscriptions.append(
@@ -219,12 +268,12 @@ def generate_launch_description():
                 missing = [topic for topic, received in received_topics.items() if not received]
                 if not missing:
                     logger.info(
-                        f"Received simulation messages on {list(required_topics.keys())}; starting mode '{requested_mode}'."
+                        f"Received GZ simulation messages on {list(required_topics.keys())}; starting mode '{requested_mode}'."
                     )
                     break
 
                 if missing != last_reported_missing:
-                    logger.info(f"Waiting for simulation messages before startup: {missing}")
+                    logger.info(f"Waiting for GZ simulation messages before startup: {missing}")
                     last_reported_missing = missing
 
                 rclpy.spin_once(waiter, timeout_sec=0.5)
@@ -255,7 +304,7 @@ def generate_launch_description():
 
         temp_sdf = tempfile.NamedTemporaryFile(
             mode='w',
-            prefix='pb_option1_',
+            prefix='pb_option1_gz_',
             suffix='.sdf',
             delete=False,
         )
@@ -264,18 +313,18 @@ def generate_launch_description():
         temp_sdf.close()
 
         spawn_robot = Node(
-            package='gazebo_ros',
-            executable='spawn_entity.py',
+            package='ros_gz_sim',
+            executable='create',
             arguments=[
+                '-world', context.launch_configurations['world_name'],
                 '-file', temp_sdf.name,
-                '-entity', 'pb_robot',
+                '-name', 'pb_robot',
                 '-x', '0',
                 '-y', '0',
                 '-z', '0.35',
                 '-Y', '0',
-                '-timeout', '30',
             ],
-            output='screen'
+            output='screen',
         )
 
         delayed_start = RegisterEventHandler(
@@ -285,7 +334,12 @@ def generate_launch_description():
             )
         )
 
-        return [spawn_robot, delayed_start]
+        delayed_spawn = TimerAction(
+            period=2.0,
+            actions=[spawn_robot],
+        )
+
+        return [delayed_spawn, delayed_start]
 
     return LaunchDescription([
         declare_use_sim_time,
@@ -294,12 +348,17 @@ def generate_launch_description():
         declare_use_rviz,
         declare_use_vision,
         declare_gazebo_gui,
+        declare_world,
+        declare_world_name,
         declare_map,
         declare_nav2_params,
         declare_amcl_params,
         declare_slam_params,
         declare_cmd_vel_topic,
         description_launch,
-        gazebo,
+        gz_sim,
+        bridge_node,
+        cmd_vel_bridge,
+        frame_normalizer,
         OpaqueFunction(function=spawn_and_chain_setup),
     ])
