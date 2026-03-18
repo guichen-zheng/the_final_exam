@@ -26,6 +26,7 @@ def generate_launch_description():
     mode = LaunchConfiguration('mode')
     robot_name = LaunchConfiguration('robot_name')
     use_rviz = LaunchConfiguration('use_rviz')
+    rviz_config_file = LaunchConfiguration('rviz_config_file')
     use_vision = LaunchConfiguration('use_vision')
     gazebo_gui = LaunchConfiguration('gazebo_gui')
     map_yaml = LaunchConfiguration('map')
@@ -53,6 +54,11 @@ def generate_launch_description():
         'use_rviz',
         default_value='true',
         description='Whether to start RViz from the description launch.',
+    )
+    declare_rviz_config_file = DeclareLaunchArgument(
+        'rviz_config_file',
+        default_value=os.path.join(pkg_description, 'rviz', 'navigation_debug.rviz'),
+        description='RViz config file used by the description launch.',
     )
     declare_use_vision = DeclareLaunchArgument(
         'use_vision',
@@ -98,6 +104,7 @@ def generate_launch_description():
             'use_sim_time': use_sim_time,
             'robot_name': robot_name,
             'use_rviz': use_rviz,
+            'rviz_config_file': rviz_config_file,
         }.items(),
     )
 
@@ -292,6 +299,7 @@ def generate_launch_description():
         declare_mode,
         declare_robot_name,
         declare_use_rviz,
+        declare_rviz_config_file,
         declare_use_vision,
         declare_gazebo_gui,
         declare_map,

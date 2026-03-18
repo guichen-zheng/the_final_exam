@@ -46,131 +46,195 @@ pb_option1_nav_vision/
 └── README.md
 ```
 目前结构如此，后续可作出相应更改
+
 ### 一、pb_option1_bringup
-存放launch启动文件
-#### 1.sim.launch.py
-用于启动仿真总入口（如需小车，请先执行下面 `pb_option1_description` 中的内容）。
+存放 launch 启动文件。
 
-当前支持三种模式：
-- `mode:=base`：仅启动 Gazebo Classic、机器人模型和基础 TF。
-- `mode:=slam`：在 `base` 基础上启动 SLAM。
-- `mode:=nav`：在 `base` 基础上启动地图定位和 Nav2。
+#### 1. 当前入口说明
+当前有两条仿真入口：
 
-另外新增了一条并行的 GZ Sim 入口：
-- `sim_gz.launch.py`：不覆盖现有 Gazebo Classic，单独用于 GZ Sim 验证。
-- 当前已验证 `mode:=base`、`mode:=nav` 可以启动；GZ 分支会桥接并规范化 `/scan`、`/odom`，并广播 `odom -> base_footprint`。
-- GZ Sim 分支当前使用的是一份更轻量的 GZ 专用模型：保留底盘和 `rplidar_a2`，先不带 `mid360`、工业相机和自定义裁判系统插件。
+- `sim.launch.py`
+  - Gazebo Classic 总入口
+  - 支持 `mode:=base`、`mode:=slam`、`mode:=nav`
+- `sim_gz.launch.py`
+  - GZ Sim 总入口
+  - 支持 `mode:=base`、`mode:=slam`、`mode:=nav`
 
-以下是当前推荐的仿真启动流程。
+两条入口都会：
+
+- 启动机器人描述和 RViz
+- 生成临时 SDF 并把机器人 spawn 到仿真器
+- 在 `slam` / `nav` 模式下等待关键话题就绪后再继续启动对应功能
+
+#### 2. 当前推荐启动方式
 1. 编译
-```
+```bash
 colcon build --symlink-install
 ```
-2. 启动
+
+2. source 环境
 
 如果你使用 `zsh`：
-```
+```bash
 source install/setup.zsh
 ```
 
 如果你使用 `bash`：
-```
+```bash
 source install/setup.bash
 ```
 
-Gazebo Classic 基础仿真：
+如果你平时开着 Conda，建议先执行：
+```bash
+conda deactivate
 ```
+
+3. 启动
+
+Gazebo Classic 基础仿真：
+```bash
 ros2 launch pb_option1_bringup sim.launch.py mode:=base
 ```
 
-Gazebo Classic SLAM 仿真：
-```
+Gazebo Classic 建图仿真：
+```bash
 ros2 launch pb_option1_bringup sim.launch.py mode:=slam
 ```
 
 Gazebo Classic 导航仿真：
-```
+```bash
 ros2 launch pb_option1_bringup sim.launch.py mode:=nav
 ```
 
 GZ Sim 基础仿真：
-```
+```bash
 ros2 launch pb_option1_bringup sim_gz.launch.py mode:=base
 ```
 
-GZ Sim 导航仿真：
+GZ Sim 建图仿真：
+```bash
+ros2 launch pb_option1_bringup sim_gz.launch.py mode:=slam
 ```
+
+GZ Sim 导航仿真：
+```bash
 ros2 launch pb_option1_bringup sim_gz.launch.py mode:=nav
 ```
 
-3. 如需视觉调试，可在 RViz 中添加 `/image` 和 MarkerArray
-识别到的物品会在终端中给出（problem：在未放物品时持续检测到香蕉？）
-
-#### 2. 仿真导航已知要求
-当前仿真链路已经按 Gazebo Classic 调通，已确认：
-- 底盘通过 Classic 兼容驱动发布 `/odom`，并广播 `odom -> base_footprint`。
-- `rplidar_a2` 已通过 Classic 兼容激光插件发布 `/scan`。
-- `sim.launch.py` 会在机器人 spawn 后等待关键仿真消息就绪，再继续启动 `slam` / `localization` / `nav2`。
-
-当前导航默认基于以下约定：
-- 仿真器使用 Gazebo Classic，不是 Ignition / GZ Sim。
-- 导航相关 base frame 使用 `base_footprint`，不是 `base_link`。
-- `mode:=nav` 下会自动给 AMCL 设置初始位姿 `(0, 0, 0)`，适配当前默认地图和仿真出生点。
-
-如果在新环境里再次排查导航，请优先检查以下话题和 TF：
+如需视觉节点，可额外打开：
+```bash
+ros2 launch pb_option1_bringup sim.launch.py mode:=nav use_vision:=true
 ```
-ros2 topic echo /odom --once
+
+#### 3. RViz 默认行为
+当前 `sim.launch.py` 和 `sim_gz.launch.py` 默认使用导航调试版 RViz 配置：
+
+- 固定坐标系为 `map`
+- 默认显示 `/map`、`/scan`、`/odom`、`/plan`、`/local_plan`
+- 默认提供 `2D Pose Estimate` 和 `2D Goal Pose`
+
+如果只想看机器人模型，可以手动切回旧配置：
+```bash
+ros2 launch pb_option1_bringup sim_gz.launch.py mode:=nav \
+  rviz_config_file:=/home/l/bjx_dzy/ros2_ws/src/pb_option1_description/rviz/visualize_robot.rviz
+```
+
+#### 4. 当前验证状态
+已经确认的内容：
+
+- Gazebo Classic 的 `mode:=nav` 可以启动到 Nav2 active
+- GZ Sim 的 `mode:=nav` 在带 GUI 的情况下可以正常启动
+- GZ Sim 分支中 `/scan`、`/odom`、`map -> base_footprint`、`odom -> base_footprint` 都可以拿到
+- `navigate_to_pose` action server 可用，基本导航动作链已经打通
+
+#### 5. 当前已知限制
+需要注意以下几点：
+
+- 当前默认地图还是占位图，`/map` 对应的是 `10 x 10` 的空白地图，不代表已经完成真实环境导航
+- `real.launch.py` 和 `joystick.launch.py` 目前仍是空文件，实车链路还没有补完
+- `pb_option1_sim/launch/gazebo_with_objects.launch.py` 这个名字虽然叫 `with_objects`，但默认仍然是空世界
+- GZ Sim 的 headless 路径在某些机器上可能崩溃；带 GUI 时可能正常
+
+GZ Sim 这里要特别说明：
+
+- 当 `gui:=true` 时，GZ 使用正常窗口渲染
+- 当 `gui:=false` 时，会走 `--headless-rendering`
+- 两条渲染路径对显卡驱动和 OpenGL / EGL 的要求不同，所以“同一台机器 GUI 能跑、headless 崩溃”是可能发生的
+
+#### 6. 常用排查命令
+如果怀疑导航没起来，优先检查：
+
+```bash
 ros2 topic echo /scan --once
+ros2 topic echo /odom --once
+ros2 topic echo /map --once
 ros2 run tf2_ros tf2_echo odom base_footprint
 ros2 run tf2_ros tf2_echo map base_footprint
+ros2 action list
 ```
 
-#### 3. GZ Sim 分支当前状态
-当前仓库里已经新增了一条与 Classic 并存的 GZ Sim 链路，核心文件包括：
-- `pb_option1_bringup/launch/sim_gz.launch.py`
-- `pb_option1_sim/launch/gz_sim_with_objects.launch.py`
-- `pb_option1_sim/worlds/gz_nav_empty.sdf`
-- `pb_option1_description/resource/xmacro/simulation_robot_gz.sdf.xmacro`
+如果想确认 Nav2 节点是否 active：
 
-当前这条 GZ Sim 分支的设计目标是“先把基础导航输入链搭起来”，所以做了两件事：
-- 使用 GZ Sim 世界 + `ros_gz_bridge` 单独桥接 `/clock`、`/scan`、`/odom`、`/cmd_vel`
-- 在 ROS 侧增加 frame 规范化节点，把 GZ 原始 frame 统一改成 `odom`、`base_footprint`、`front_rplidar_a2`
+```bash
+ros2 service call /map_server/get_state lifecycle_msgs/srv/GetState "{}"
+ros2 service call /controller_server/get_state lifecycle_msgs/srv/GetState "{}"
+ros2 service call /planner_server/get_state lifecycle_msgs/srv/GetState "{}"
+ros2 service call /bt_navigator/get_state lifecycle_msgs/srv/GetState "{}"
+```
 
-建议把它当成一条独立验证链来使用，不要直接替换现有 Classic 入口。
 ### 二、pb_option1_description
-由于次模型利用了特殊的xmacro文件，需要特定库将其解释，而且此解释库不可保存在git,所以需要在每次运行有关使用小车模型的调试时，请先执行以下步骤
-1. 下载所用依赖
-```
+由于模型使用了特殊的 xmacro 文件，需要额外依赖。第一次在新环境里使用机器人模型时，建议先做下面这些准备。
+
+#### 1. 安装依赖
+```bash
 sudo apt install git-lfs
 pip install vcstool2
+pip install xmacro
 ```
-2. 将相关库导入
-```
+
+#### 2. 导入相关仓库
+```bash
 cd src/pb_option1_description
 vcs import --recursive < dependencies.repos
 mv joint_state_publisher rmoss_gz_resources sdformat_tools ..
 ```
-3. 下载xmacro插件
-```
-pip install xmacro
-```
-### 三、 pb_option1_navigation
-当前导航参数已适配 Humble + Gazebo Classic 仿真，重点包括：
-- `local_costmap` 的 `width`、`height` 使用整数类型。
-- 已补齐 `nav2_dwb_controller`、`nav2_navfn_planner` 依赖。
-- AMCL / Nav2 的底盘 frame 已统一为 `base_footprint`。
-### 四、 pb_option1_vision
-#### 调试流程：
+
+### 三、pb_option1_navigation
+当前导航部分已经具备以下内容：
+
+- `slam.launch.py`：SLAM Toolbox 建图入口
+- `localization.launch.py`：Map Server + AMCL 定位入口
+- `nav2_bringup.launch.py`：Nav2 服务器入口
+- `nav2_params.yaml`：已经补齐 DWB controller、Navfn planner 等 Humble 所需参数
+
+当前导航约定：
+
+- base frame 使用 `base_footprint`
+- 雷达话题统一为 `/scan`
+- 里程计话题统一为 `/odom`
+- GZ Sim 会通过桥接和 frame normalizer 把原始话题整理成上述格式
+
+当前限制：
+
+- `maps/map.yaml` 对应的地图仍然是占位图
+- 因此目前更准确的状态是“导航链打通了”，不是“比赛地图已经完成”
+
+### 四、pb_option1_vision
+#### 调试流程
 1. 编译
-```
+```bash
 colcon build --packages-select pb_option1_vision
 ```
-2. 先开启另一终端，启动相机节点(ros2自带实例)
-```
+
+2. 先开启另一终端，启动相机节点（ROS2 自带示例）
+```bash
 ros2 run image_tools cam2image --ros-args -p device_id:=0
 ```
-3. 回到原终端(launch中已设置好rviz)
-```
+
+3. 回到原终端
+```bash
 source install/setup.bash
 ros2 launch pb_option1_vision vision_and_follow.launch.py
 ```
+
+当前视觉部分仍建议单独调试，不建议和导航联调问题混在一起排查。
