@@ -1,0 +1,13 @@
+# 核心依赖
+ultralytics==8.2.0  # YOLOv8（建议指定版本，避免更新冲突）
+opencv-python==4.10.0.84  # OpenCV 用于图像处理
+numpy<2.0  # 固定 <2.0，避免与 cv_bridge 冲突
+
+# 深度学习依赖（如果用 GPU，调整 torch 版本）
+torch==2.3.1
+torchvision==0.18.1
+torchaudio==2.3.1
+
+# 其他可选
+pyyaml>=6.0  # YAML 解析（如果需要）
+matplotlib>=3.8.0  # 可视化（调试用）

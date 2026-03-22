@@ -231,21 +231,39 @@ mv joint_state_publisher rmoss_gz_resources sdformat_tools ..
 - 因此目前更准确的状态是“比赛地图已接入，导航链也打通了”，但还需要继续做定位初值和导航参数收敛
 
 ### 四、pb_option1_vision
-#### 调试流程
-1. 编译
-```bash
-colcon build --packages-select pb_option1_vision
+### 1、准备工作
+####  依赖准备（在workspace下）
+```sh
+vcs import src < src/dependencies.repos
+sudo apt install git-lfs
+pip install vcstool2
+pip install xmacro
 ```
-
-2. 先开启另一终端，启动相机节点（ROS2 自带示例）
-```bash
+#### 编译
+```sh 
+colcon build --symlink-install
+``` 
+##### 如崩溃用这个
+```sh
+colcon build --symlink-install --parallel-workers 3
+```
+### 2、启动(vision功能)
+#### 启动识别
+```sh
+ros2 launch pb_option1_bringup sim_vision.launch.py mode:=detect
+```
+#### 启动跟随
+```sh
+ros2 launch pb_option1_bringup sim_vision.launch.py mode:=follow
+```
+##### 在另一终端中启动相机,如想看到识别结果（在rviz中加入topic/vision/annotated_image）
+```sh
 ros2 run image_tools cam2image --ros-args -p device_id:=0
 ```
-
-3. 回到原终端
-```bash
-source install/setup.bash
-ros2 launch pb_option1_vision vision_and_follow.launch.py
+##### 可以启动控制小车
+```sh
+ros2 run rmoss_gz_base test_chassis_cmd.py --ros-args -r __ns:=/red_standard_robot1/robot_base -p v:=0.3 -p w:=0.3
 ```
+
 
 当前视觉部分仍建议单独调试，不建议和导航联调问题混在一起排查。
