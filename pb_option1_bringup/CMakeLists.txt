@@ -9,11 +9,9 @@ endif()
 # 必须的构建工具
 find_package(ament_cmake REQUIRED)
 
-# 运行时依赖：这些包在 launch 文件中会被启动，所以在这里声明比较好
-# 实际使用时 ROS 2 会检查它们是否存在
-find_package(gazebo_ros REQUIRED)             # 启动 Gazebo
-find_package(robot_state_publisher REQUIRED)  # 发布 robot_description 和 TF
-find_package(usb_cam REQUIRED)                # 真实摄像头节点
+# 运行时依赖：这些包会在 launch 阶段被调用，不需要在 CMake 配置阶段解析
+find_package(robot_state_publisher REQUIRED)
+find_package(usb_cam REQUIRED)
 
 # 你的自定义包（模型和视觉）
 # find_package(pb_option1_description REQUIRED)

@@ -22,6 +22,8 @@ def generate_launch_description():
     pkg_navigation = get_package_share_directory('pb_option1_navigation')
     pkg_sim = get_package_share_directory('pb_option1_sim')
     pkg_bringup = get_package_share_directory('pb_option1_bringup')
+    workspace_root = os.path.abspath(os.path.join(pkg_sim, '..', '..', '..', '..'))
+    default_world = os.path.join(workspace_root, 'resource', 'worlds', 'rmuc_2025_world.sdf')
 
     use_sim_time = LaunchConfiguration('use_sim_time')
     mode = LaunchConfiguration('mode')
@@ -37,6 +39,10 @@ def generate_launch_description():
     cmd_vel_topic = LaunchConfiguration('cmd_vel_topic')
     world = LaunchConfiguration('world')
     world_name = LaunchConfiguration('world_name')
+    spawn_x = LaunchConfiguration('spawn_x')
+    spawn_y = LaunchConfiguration('spawn_y')
+    spawn_z = LaunchConfiguration('spawn_z')
+    spawn_yaw = LaunchConfiguration('spawn_yaw')
 
     declare_use_sim_time = DeclareLaunchArgument(
         'use_sim_time',
@@ -75,13 +81,33 @@ def generate_launch_description():
     )
     declare_world = DeclareLaunchArgument(
         'world',
-        default_value=os.path.join(pkg_sim, 'worlds', 'gz_nav_empty.sdf'),
+        default_value=default_world,
         description='Absolute path to the GZ Sim world file.',
     )
     declare_world_name = DeclareLaunchArgument(
         'world_name',
-        default_value='pb_empty',
+        default_value='default',
         description='World name declared inside the GZ Sim world SDF.',
+    )
+    declare_spawn_x = DeclareLaunchArgument(
+        'spawn_x',
+        default_value='2.0',
+        description='Robot spawn x position in the GZ Sim world.',
+    )
+    declare_spawn_y = DeclareLaunchArgument(
+        'spawn_y',
+        default_value='4.0',
+        description='Robot spawn y position in the GZ Sim world.',
+    )
+    declare_spawn_z = DeclareLaunchArgument(
+        'spawn_z',
+        default_value='0.35',
+        description='Robot spawn z position in the GZ Sim world.',
+    )
+    declare_spawn_yaw = DeclareLaunchArgument(
+        'spawn_yaw',
+        default_value='1.5708',
+        description='Robot spawn yaw in radians in the GZ Sim world.',
     )
     declare_map = DeclareLaunchArgument(
         'map',
@@ -186,6 +212,9 @@ def generate_launch_description():
             'use_sim_time': use_sim_time,
             'map': map_yaml,
             'amcl_params': amcl_params,
+            'initial_pose_x': spawn_x,
+            'initial_pose_y': spawn_y,
+            'initial_pose_yaw': spawn_yaw,
         }.items(),
     )
 
@@ -326,10 +355,10 @@ def generate_launch_description():
                 '-world', context.launch_configurations['world_name'],
                 '-file', temp_sdf.name,
                 '-name', 'pb_robot',
-                '-x', '0',
-                '-y', '0',
-                '-z', '0.35',
-                '-Y', '0',
+                '-x', context.launch_configurations['spawn_x'],
+                '-y', context.launch_configurations['spawn_y'],
+                '-z', context.launch_configurations['spawn_z'],
+                '-Y', context.launch_configurations['spawn_yaw'],
             ],
             output='screen',
         )
@@ -358,6 +387,10 @@ def generate_launch_description():
         declare_gazebo_gui,
         declare_world,
         declare_world_name,
+        declare_spawn_x,
+        declare_spawn_y,
+        declare_spawn_z,
+        declare_spawn_yaw,
         declare_map,
         declare_nav2_params,
         declare_amcl_params,

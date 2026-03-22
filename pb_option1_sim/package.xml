@@ -11,9 +11,9 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <!-- 运行时依赖（launch 文件里会用到） -->
-  <depend>gazebo_ros</depend>
   <depend>ros_gz_sim</depend>
   <depend>pb_option1_description</depend>   <!-- 用于 spawn 机器人 -->
+  <depend>rmoss_gz_resources</depend>
 
   <!-- 测试依赖（可选） -->
   <test_depend>ament_lint_auto</test_depend>

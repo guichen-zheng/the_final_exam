@@ -6,9 +6,8 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-# 必须的包
+# 这是一个资源/launch 包，不需要在 CMake 配置阶段链接仿真库
 find_package(ament_cmake REQUIRED)
-find_package(gazebo_ros REQUIRED)
 
 # 安装 launch 文件夹（关键！）
 install(DIRECTORY

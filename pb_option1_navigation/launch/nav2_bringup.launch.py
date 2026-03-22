@@ -15,6 +15,7 @@ def generate_launch_description():
     autostart = LaunchConfiguration('autostart')
     log_level = LaunchConfiguration('log_level')
     cmd_vel_topic = LaunchConfiguration('cmd_vel_topic')
+    bt_xml = LaunchConfiguration('bt_xml')
 
     declare_use_sim_time = DeclareLaunchArgument('use_sim_time', default_value='false')
     declare_params_file = DeclareLaunchArgument(
@@ -26,6 +27,10 @@ def generate_launch_description():
     declare_cmd_vel_topic = DeclareLaunchArgument(
         'cmd_vel_topic', default_value='/cmd_vel',
         description='Where Nav2 outputs velocity. Set to /cmd_vel_nav if you use a mux.')
+    declare_bt_xml = DeclareLaunchArgument(
+        'bt_xml',
+        default_value=os.path.join(pkg_dir, 'behavior_trees', 'navigate_to_pose_rmuc.xml'),
+        description='Behavior tree XML used by NavigateToPose.')
 
     # Core Nav2 nodes
     controller = Node(
@@ -55,7 +60,14 @@ def generate_launch_description():
 
     bt_nav = Node(
         package='nav2_bt_navigator', executable='bt_navigator', name='bt_navigator',
-        output='screen', parameters=[params_file, {'use_sim_time': use_sim_time}],
+        output='screen',
+        parameters=[
+            params_file,
+            {
+                'use_sim_time': use_sim_time,
+                'default_nav_to_pose_bt_xml': bt_xml,
+            },
+        ],
         arguments=['--ros-args', '--log-level', log_level],
     )
 
@@ -92,6 +104,7 @@ def generate_launch_description():
         declare_autostart,
         declare_log_level,
         declare_cmd_vel_topic,
+        declare_bt_xml,
         controller,
         planner,
         smoother,

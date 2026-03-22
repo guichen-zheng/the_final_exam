@@ -54,10 +54,11 @@ pb_option1_nav_vision/
 当前有两条仿真入口：
 
 - `sim.launch.py`
-  - Gazebo Classic 总入口
+  - 默认仿真总入口
+  - 当前已切到 GZ Sim
   - 支持 `mode:=base`、`mode:=slam`、`mode:=nav`
 - `sim_gz.launch.py`
-  - GZ Sim 总入口
+  - GZ Sim 兼容入口
   - 支持 `mode:=base`、`mode:=slam`、`mode:=nav`
 
 两条入口都会：
@@ -65,6 +66,7 @@ pb_option1_nav_vision/
 - 启动机器人描述和 RViz
 - 生成临时 SDF 并把机器人 spawn 到仿真器
 - 在 `slam` / `nav` 模式下等待关键话题就绪后再继续启动对应功能
+- 当前 GZ Sim 路径会把 server 和 GUI 分开启动，减少较大比赛场地下 GUI 黑屏卡死的问题
 
 #### 2. 当前推荐启动方式
 1. 编译
@@ -91,32 +93,39 @@ conda deactivate
 
 3. 启动
 
-Gazebo Classic 基础仿真：
+默认基础仿真：
 ```bash
 ros2 launch pb_option1_bringup sim.launch.py mode:=base
 ```
 
-Gazebo Classic 建图仿真：
+如需调整默认出生点，可额外传：
+```bash
+ros2 launch pb_option1_bringup sim.launch.py mode:=base spawn_x:=2.0 spawn_y:=4.0 spawn_yaw:=1.5708
+```
+
+在 `mode:=nav` 下，AMCL 默认初始位姿会自动跟随 `spawn_x`、`spawn_y`、`spawn_yaw`。
+
+默认建图仿真：
 ```bash
 ros2 launch pb_option1_bringup sim.launch.py mode:=slam
 ```
 
-Gazebo Classic 导航仿真：
+默认导航仿真：
 ```bash
 ros2 launch pb_option1_bringup sim.launch.py mode:=nav
 ```
 
-GZ Sim 基础仿真：
+兼容入口基础仿真：
 ```bash
 ros2 launch pb_option1_bringup sim_gz.launch.py mode:=base
 ```
 
-GZ Sim 建图仿真：
+兼容入口建图仿真：
 ```bash
 ros2 launch pb_option1_bringup sim_gz.launch.py mode:=slam
 ```
 
-GZ Sim 导航仿真：
+兼容入口导航仿真：
 ```bash
 ros2 launch pb_option1_bringup sim_gz.launch.py mode:=nav
 ```
@@ -142,17 +151,18 @@ ros2 launch pb_option1_bringup sim_gz.launch.py mode:=nav \
 #### 4. 当前验证状态
 已经确认的内容：
 
-- Gazebo Classic 的 `mode:=nav` 可以启动到 Nav2 active
-- GZ Sim 的 `mode:=nav` 在带 GUI 的情况下可以正常启动
+- 当前默认 GZ Sim 的 `mode:=nav` 可以启动到 Nav2 active
 - GZ Sim 分支中 `/scan`、`/odom`、`map -> base_footprint`、`odom -> base_footprint` 都可以拿到
 - `navigate_to_pose` action server 可用，基本导航动作链已经打通
+- 默认 world 已切到工作区根目录下的 `resource/worlds/rmuc_2025_world.sdf`
+- 默认静态地图已经替换为基于 `resource/models/rmuc_2025/meshes/rmuc_2025.stl` 生成的比赛场地地图
 
 #### 5. 当前已知限制
 需要注意以下几点：
 
-- 当前默认地图还是占位图，`/map` 对应的是 `10 x 10` 的空白地图，不代表已经完成真实环境导航
+- 当前默认地图已经切到 `rmuc_2025` 静态地图，但 AMCL 初始位姿仍建议继续和默认出生点一起对齐
 - `real.launch.py` 和 `joystick.launch.py` 目前仍是空文件，实车链路还没有补完
-- `pb_option1_sim/launch/gazebo_with_objects.launch.py` 这个名字虽然叫 `with_objects`，但默认仍然是空世界
+- `pb_option1_sim/launch/gazebo_with_objects.launch.py` 现在也已经转到 GZ Sim，不再走 Gazebo Classic
 - GZ Sim 的 headless 路径在某些机器上可能崩溃；带 GUI 时可能正常
 
 GZ Sim 这里要特别说明：
@@ -213,11 +223,12 @@ mv joint_state_publisher rmoss_gz_resources sdformat_tools ..
 - 雷达话题统一为 `/scan`
 - 里程计话题统一为 `/odom`
 - GZ Sim 会通过桥接和 frame normalizer 把原始话题整理成上述格式
+- 当前默认静态地图来自 `rmuc_2025` 场地 mesh 投影，生成脚本在 [tools/generate_field_map.py](/home/l/bjx_dzy/ros2_ws/src/pb_option1_navigation/tools/generate_field_map.py)
 
 当前限制：
 
-- `maps/map.yaml` 对应的地图仍然是占位图
-- 因此目前更准确的状态是“导航链打通了”，不是“比赛地图已经完成”
+- 静态地图已经换成 `rmuc_2025`，但默认 AMCL 初始位姿还没和当前 spawn 点完全收敛
+- 因此目前更准确的状态是“比赛地图已接入，导航链也打通了”，但还需要继续做定位初值和导航参数收敛
 
 ### 四、pb_option1_vision
 #### 调试流程
