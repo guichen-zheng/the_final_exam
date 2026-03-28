@@ -248,13 +248,21 @@ colcon build --symlink-install
 colcon build --symlink-install --parallel-workers 3
 ```
 ### 2、启动(vision功能)
-#### 启动识别
+#### 启动识别(单跑视觉)
 ```sh
 ros2 launch pb_option1_bringup sim_vision.launch.py mode:=detect
+```
+#### 启动视觉(和导航共行)
+```sh
+ros2 launch pb_option1_bringup sim_vision.launch.py use_existing_sim:=true mode:=detect
 ```
 #### 启动跟随
 ```sh
 ros2 launch pb_option1_bringup sim_vision.launch.py mode:=follow
+```
+#### 启动跟随(和导航共行)
+```sh
+ros2 launch pb_option1_bringup sim_vision.launch.py use_existing_sim:=true mode:=follow
 ```
 ##### 在另一终端中启动相机,如想看到识别结果（在rviz中加入topic/vision/annotated_image）
 ```sh
@@ -262,7 +270,7 @@ ros2 run image_tools cam2image --ros-args -p device_id:=0
 ```
 ##### 可以启动控制小车
 ```sh
-ros2 run rmoss_gz_base test_chassis_cmd.py --ros-args -r __ns:=/red_standard_robot1/robot_base -p v:=0.3 -p w:=0.3
+ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r cmd_vel:=/cmd_vel
 ```
 
 
