@@ -29,17 +29,17 @@ def generate_launch_description():
 
     robot_name = 'simulation_robot'
 
-    # ================== 官方 Gazebo（第一版 B 路线） ==================
-    gazebo = IncludeLaunchDescription(
-        PathJoinSubstitution([
-            pkg_simulator, 'launch', 'gazebo.launch.py'
-        ]),
-        launch_arguments={
-            'world_sdf_path': PathJoinSubstitution([
-                pkg_simulator, 'resource', 'worlds', 'empty_world.sdf'
-            ]),
-        }.items()
-    )
+    # # ================== 官方 Gazebo（第一版 B 路线） ==================
+    # gazebo = IncludeLaunchDescription(
+    #     PathJoinSubstitution([
+    #         pkg_simulator, 'launch', 'gazebo.launch.py'
+    #     ]),
+    #     launch_arguments={
+    #         'world_sdf_path': PathJoinSubstitution([
+    #             pkg_simulator, 'resource', 'worlds', 'empty_world.sdf'
+    #         ]),
+    #     }.items()
+    # )
 
     # ================== Spawn（官方 create + 你的 xmacro） ==================
     robot_xmacro_path = os.path.join(
@@ -154,21 +154,19 @@ def generate_launch_description():
     )
 
     # ================== 描述 + RViz（你原来的） ==================
-    description_launch = IncludeLaunchDescription(
-        PathJoinSubstitution([
-            pkg_description, 'launch', 'robot_description_launch.py'
-        ]),
-        launch_arguments={
-            'use_sim_time': LaunchConfiguration('use_sim_time'),
-            'use_rviz': 'true'
-        }.items()
-    )
+    # description_launch = IncludeLaunchDescription(
+    #     PathJoinSubstitution([
+    #         pkg_description, 'launch', 'robot_description_launch.py'
+    #     ]),
+    #     launch_arguments={
+    #         'use_sim_time': LaunchConfiguration('use_sim_time'),
+    #         'use_rviz': 'true'
+    #     }.items()
+    # )
     
     ld = LaunchDescription([
         mode_arg,
         use_sim_time_arg,
-        description_launch,
-        gazebo,
         spawn_robot,
         robot_base,               # 官方底盘
         object_detector,

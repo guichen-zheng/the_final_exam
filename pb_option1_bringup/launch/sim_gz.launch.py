@@ -23,7 +23,7 @@ def generate_launch_description():
     pkg_sim = get_package_share_directory('pb_option1_sim')
     pkg_bringup = get_package_share_directory('pb_option1_bringup')
     workspace_root = os.path.abspath(os.path.join(pkg_sim, '..', '..', '..', '..'))
-    default_world = os.path.join(workspace_root, 'resource', 'worlds', 'rmuc_2025_world.sdf')
+    default_world = os.path.join(workspace_root, 'src','rmu_gazebo_simulator','rmu_gazebo_simulator','resource', 'worlds', 'rmuc_2025_world.sdf')
 
     use_sim_time = LaunchConfiguration('use_sim_time')
     mode = LaunchConfiguration('mode')
