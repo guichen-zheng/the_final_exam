@@ -50,8 +50,8 @@ controller_server:
     goal_checker:
       plugin: "nav2_controller::SimpleGoalChecker"
       stateful: false
-      xy_goal_tolerance: 0.40
-      yaw_goal_tolerance: 3.14
+      xy_goal_tolerance: 0.05
+      yaw_goal_tolerance: 0.15
 
     FollowPath:
       plugin: "dwb_core::DWBLocalPlanner"
@@ -77,10 +77,10 @@ controller_server:
 
       critics: ["RotateToGoal", "Oscillation", "BaseObstacle", "GoalAlign", "PathAlign", "PathDist", "GoalDist"]
       BaseObstacle.scale: 0.05
-      PathAlign.scale: 24.0
-      GoalAlign.scale: 18.0
-      PathDist.scale: 24.0
-      GoalDist.scale: 18.0
+      PathAlign.scale: 10.0
+      GoalAlign.scale: 8.0
+      PathDist.scale: 10.0
+      GoalDist.scale: 8.0
       RotateToGoal.scale: 24.0
       RotateToGoal.slowing_factor: 3.0
       RotateToGoal.lookahead_time: -1.0
@@ -176,7 +176,7 @@ local_costmap:
           inf_is_valid: false
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        inflation_radius: 0.40
+        inflation_radius: 0.26
         cost_scaling_factor: 4.0
 
 global_costmap:
@@ -197,7 +197,7 @@ global_costmap:
         map_subscribe_transient_local: true
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        inflation_radius: 0.45
+        inflation_radius: 0.26
         cost_scaling_factor: 4.0
 
 # for debugging
