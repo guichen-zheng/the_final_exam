@@ -260,6 +260,15 @@ def generate_launch_description():
         output='screen'
     )
 
+    static_world_to_map = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='static_world_to_map',
+        arguments=['0.0', '0.0', '0', '0', '0', '0', 'world', 'map'],  # x y z roll pitch yaw  parent child
+        output='screen',
+    )
+
+
     def wait_for_sim_topics_and_start(context, *args, **kwargs):
         requested_mode = context.launch_configurations['mode']
         required_topics = {}
@@ -401,5 +410,6 @@ def generate_launch_description():
         bridge_node,
         cmd_vel_bridge,
         frame_normalizer,
-        OpaqueFunction(function=spawn_and_chain_setup),
+        static_world_to_map,
+        OpaqueFunction(function=spawn_and_chain_setup),  
     ])

@@ -1,14 +1,14 @@
 amcl:
   ros__parameters:
-    use_sim_time: false
+    use_sim_time: true
 
     # Frames
     global_frame_id: map
     odom_frame_id: odom
     base_frame_id: base_footprint
     set_initial_pose: true
-    initial_pose.x: 2.0
-    initial_pose.y: 4.0
+    initial_pose.x: 3.4
+    initial_pose.y: 9.5
     initial_pose.z: 0.0
     initial_pose.yaw: 0.0
 

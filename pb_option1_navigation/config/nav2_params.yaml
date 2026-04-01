@@ -4,7 +4,7 @@
 
 amcl:
   ros__parameters:
-    use_sim_time: false
+    use_sim_time: true
     global_frame_id: map
     odom_frame_id: odom
     base_frame_id: base_footprint
@@ -17,12 +17,12 @@ amcl:
 
 map_server:
   ros__parameters:
-    use_sim_time: false
+    use_sim_time: true
     yaml_filename: ""  # set by launch: map:=...
 
 planner_server:
   ros__parameters:
-    use_sim_time: false
+    use_sim_time: true
     expected_planner_frequency: 5.0
     planner_plugins: ["GridBased"]
     GridBased:
@@ -33,7 +33,7 @@ planner_server:
 
 controller_server:
   ros__parameters:
-    use_sim_time: false
+    use_sim_time: true
     controller_frequency: 20.0
     min_x_velocity_threshold: 0.001
     min_y_velocity_threshold: 0.0
@@ -87,7 +87,7 @@ controller_server:
 
 smoother_server:
   ros__parameters:
-    use_sim_time: false
+    use_sim_time: true
     smoother_plugins: ["simple_smoother"]
     simple_smoother:
       plugin: "nav2_smoother::SimpleSmoother"
@@ -97,7 +97,7 @@ smoother_server:
 
 behavior_server:
   ros__parameters:
-    use_sim_time: false
+    use_sim_time: true
     global_frame: map
     robot_base_frame: base_footprint
     transform_tolerance: 0.3
@@ -118,7 +118,7 @@ behavior_server:
 
 bt_navigator:
   ros__parameters:
-    use_sim_time: false
+    use_sim_time: true
     global_frame: map
     robot_base_frame: base_footprint
     odom_topic: /odom
@@ -127,13 +127,13 @@ bt_navigator:
 
 waypoint_follower:
   ros__parameters:
-    use_sim_time: false
+    use_sim_time: true
     loop_rate: 20
     stop_on_failure: false
 
 velocity_smoother:
   ros__parameters:
-    use_sim_time: false
+    use_sim_time: true
     smoothing_frequency: 20.0
     scale_velocities: false
     feedback: "OPEN_LOOP"
@@ -147,7 +147,7 @@ velocity_smoother:
 local_costmap:
   local_costmap:
     ros__parameters:
-      use_sim_time: false
+      use_sim_time: true
       global_frame: odom
       robot_base_frame: base_footprint
       rolling_window: true
@@ -182,7 +182,7 @@ local_costmap:
 global_costmap:
   global_costmap:
     ros__parameters:
-      use_sim_time: false
+      use_sim_time: true
       global_frame: map
       robot_base_frame: base_footprint
       track_unknown_space: true
@@ -192,6 +192,9 @@ global_costmap:
       update_frequency: 3.0
       publish_frequency: 1.5
       plugins: ["static_layer", "inflation_layer"]
+      # ================== 关键：sentry_nav 里验证过的固定大范围配置 ==================
+      rolling_window: false
+      # =========================================================================
       static_layer:
         plugin: "nav2_costmap_2d::StaticLayer"
         map_subscribe_transient_local: true
@@ -203,4 +206,4 @@ global_costmap:
 # for debugging
 robot_state_publisher:
   ros__parameters:
-    use_sim_time: false
+    use_sim_time: true
