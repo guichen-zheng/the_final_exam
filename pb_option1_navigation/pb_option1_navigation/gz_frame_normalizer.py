@@ -63,6 +63,14 @@ class GzFrameNormalizer(Node):
     def handle_odom(self, msg: Odometry) -> None:
         msg.header.frame_id = self.odom_frame_id
         msg.child_frame_id = self.base_frame_id
+
+        # 关键修复：添加速度缩放，解决“走1m vs 走10m”的问题
+        scale_linear =  1.0   # ← 先用 0.35，建图时如果还是走得太快就调小（0.25~0.3）
+        scale_angular = 1.0   # ← 角速度缩放
+
+        msg.twist.twist.linear.x *= scale_linear
+        msg.twist.twist.angular.z *= scale_angular
+
         self.odom_pub.publish(msg)
 
     def handle_tf(self, msg: TFMessage) -> None:

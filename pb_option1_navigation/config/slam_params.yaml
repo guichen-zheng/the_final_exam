@@ -1,32 +1,40 @@
 slam_toolbox:
   ros__parameters:
     use_sim_time: true
+
     # Frames
     map_frame: map
     odom_frame: odom
     base_frame: base_footprint
+
     # Sensor topic
     scan_topic: /scan
 
-    # SLAM settings (sane defaults for indoor)
+    # SLAM 核心设置（针对 RPLidar + 比赛场地优化）
     mode: mapping
     publish_tf: true
     publish_map: true
 
     resolution: 0.05
-    max_laser_range: 15.0
-    minimum_time_interval: 0.5
+    min_laser_range: 0.4          # ← 必须改！你的雷达最小距离是0.4m
+    max_laser_range: 12.0         # ← 必须改！实际有效距离约12m
+    minimum_time_interval: 0.2    # 更频繁更新
 
-    # Loop closure / scan matching
-    # These can be tuned later; keep defaults conservative.
+    # 建图质量关键参数
+    map_update_interval: 0.5      # 原来3.0太慢，改快
+    minimum_travel_distance: 0.05 # 原来0.2太高，容易漏更新
+    minimum_travel_heading: 0.05
+
+    # 回环检测（让地图更干净）
     use_scan_matching: true
     use_loop_closure: true
-    minimum_travel_distance: 0.2
-    minimum_travel_heading: 0.2
+    loop_closure_min_score: 0.3
 
-    # Map update
-    map_update_interval: 3.0
-
-    # Performance
+    # 减少噪声
     throttle_scans: 1
-    transform_timeout: 0.2
+    transform_timeout: 1.0
+    position_covariance_scale: 0.1
+    yaw_covariance_scale: 0.1
+    range_covariance_scale: 0.1
+    scan_buffer_size: 10
+    scan_buffer_maximum_distance: 12.0

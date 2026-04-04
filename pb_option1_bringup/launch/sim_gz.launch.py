@@ -23,8 +23,8 @@ def generate_launch_description():
     pkg_sim = get_package_share_directory('pb_option1_sim')
     pkg_bringup = get_package_share_directory('pb_option1_bringup')
     workspace_root = os.path.abspath(os.path.join(pkg_sim, '..', '..', '..', '..'))
-    default_world = os.path.join(workspace_root, 'src','rmu_gazebo_simulator','rmu_gazebo_simulator','resource', 'worlds', 'rmuc_2025_world.sdf')
-
+    full_world = os.path.join(workspace_root, 'src','rmu_gazebo_simulator','rmu_gazebo_simulator','resource', 'worlds', 'rmuc_2025_world.sdf')
+    empty_world = os.path.join(workspace_root, 'src','pb_option1_sim','worlds','gz_nav_empty.sdf')
     use_sim_time = LaunchConfiguration('use_sim_time')
     mode = LaunchConfiguration('mode')
     robot_name = LaunchConfiguration('robot_name')
@@ -81,13 +81,15 @@ def generate_launch_description():
     )
     declare_world = DeclareLaunchArgument(
         'world',
-        default_value=default_world,
-        description='Absolute path to the GZ Sim world file.',
+        # 根据 mode 自动切换世界
+        default_value=PythonExpression(["'", full_world, "' if '", mode, "' == 'slam' else '", empty_world, "'"]),
+        description='World file: full rmuc_2025 when slam, empty when nav',
     )
     declare_world_name = DeclareLaunchArgument(
         'world_name',
-        default_value='default',
-        description='World name declared inside the GZ Sim world SDF.',
+        # 根据 mode 自动切换 world name
+        default_value=PythonExpression(["'default' if '", mode, "' == 'slam' else 'pb_empty'"]),
+        description='World name inside SDF',
     )
     declare_spawn_x = DeclareLaunchArgument(
         'spawn_x',
@@ -380,7 +382,7 @@ def generate_launch_description():
         )
 
         delayed_spawn = TimerAction(
-            period=2.0,
+            period=3.0,
             actions=[spawn_robot],
         )
 
