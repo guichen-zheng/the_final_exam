@@ -129,10 +129,9 @@ ros2 launch pb_option1_bringup sim_gz.launch.py mode:=slam
 ```bash
 ros2 launch pb_option1_bringup sim_gz.launch.py mode:=nav
 ```
-
-如需视觉节点，可额外打开：
-```bash
-ros2 launch pb_option1_bringup sim.launch.py mode:=nav use_vision:=true
+保存地图
+```
+ros2 launch pb_option1_bringup real.launch.py mode:=nav map:=~/my_map.yaml
 ```
 
 #### 3. RViz 默认行为
